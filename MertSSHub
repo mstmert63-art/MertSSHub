@@ -1,0 +1,331 @@
+-- MertSS Fly + Noclip Script
+-- Roblox Delta Executor için
+-- Rainbow menü, X tuşu ile aç/kapa, küçük halı (minimize) butonu
+
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Fly değişkenleri
+local flying = false
+local flySpeed = 50
+local noclip = false
+local connection
+
+-- GUI oluşturma (mevcut varsa sil)
+local existing = CoreGui:FindFirstChild("MertSS_Menu")
+if existing then existing:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MertSS_Menu"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
+
+-- Ana Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 250, 0, 220)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -110)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- Rainbow başlık çubuğu
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = TitleBar
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 1, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "MertSS"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextScaled = true
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Parent = TitleBar
+
+-- Rainbow animasyonu
+local rainbowConnection
+local hue = 0
+rainbowConnection = RunService.RenderStepped:Connect(function()
+    hue = (hue + 0.005) % 1
+    local color = Color3.fromHSV(hue, 1, 1)
+    TitleBar.BackgroundColor3 = color
+    if MainFrame.Visible then
+        MainFrame.BorderColor3 = color
+    end
+end)
+
+-- Fly butonu
+local FlyBtn = Instance.new("TextButton")
+FlyBtn.Size = UDim2.new(0, 220, 0, 35)
+FlyBtn.Position = UDim2.new(0, 15, 0, 45)
+FlyBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+FlyBtn.Text = "Fly: OFF"
+FlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FlyBtn.Font = Enum.Font.Gotham
+FlyBtn.TextScaled = true
+FlyBtn.Parent = MainFrame
+
+local FlyCorner = Instance.new("UICorner")
+FlyCorner.CornerRadius = UDim.new(0, 6)
+FlyCorner.Parent = FlyBtn
+
+-- Noclip butonu
+local NoclipBtn = Instance.new("TextButton")
+NoclipBtn.Size = UDim2.new(0, 220, 0, 35)
+NoclipBtn.Position = UDim2.new(0, 15, 0, 90)
+NoclipBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+NoclipBtn.Text = "Noclip: OFF"
+NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipBtn.Font = Enum.Font.Gotham
+NoclipBtn.TextScaled = true
+NoclipBtn.Parent = MainFrame
+
+local NoclipCorner = Instance.new("UICorner")
+NoclipCorner.CornerRadius = UDim.new(0, 6)
+NoclipCorner.Parent = NoclipBtn
+
+-- Hız ayarı
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Size = UDim2.new(0, 220, 0, 20)
+SpeedLabel.Position = UDim2.new(0, 15, 0, 130)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Text = "Fly Speed: 50"
+SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedLabel.Font = Enum.Font.Gotham
+SpeedLabel.TextScaled = true
+SpeedLabel.Parent = MainFrame
+
+local SpeedSlider = Instance.new("TextBox")
+SpeedSlider.Size = UDim2.new(0, 220, 0, 30)
+SpeedSlider.Position = UDim2.new(0, 15, 0, 155)
+SpeedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SpeedSlider.Text = "50"
+SpeedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedSlider.Font = Enum.Font.Gotham
+SpeedSlider.TextScaled = true
+SpeedSlider.Parent = MainFrame
+
+local SliderCorner = Instance.new("UICorner")
+SliderCorner.CornerRadius = UDim.new(0, 6)
+SliderCorner.Parent = SpeedSlider
+
+SpeedSlider.FocusLost:Connect(function()
+    local num = tonumber(SpeedSlider.Text)
+    if num and num > 0 and num <= 500 then
+        flySpeed = num
+        SpeedLabel.Text = "Fly Speed: " .. num
+    else
+        SpeedSlider.Text = tostring(flySpeed)
+    end
+end)
+
+-- Küçük halı (minimize) butonu - sağ üst köşe
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 25, 0, 25)
+MinimizeBtn.Position = UDim2.new(1, -30, 0, 3)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.TextScaled = true
+MinimizeBtn.Parent = TitleBar
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 5)
+MinCorner.Parent = MinimizeBtn
+
+-- Minimize edilmiş halı (küçük buton, ekranın üstünde)
+local MiniButton = Instance.new("TextButton")
+MiniButton.Name = "MiniButton"
+MiniButton.Size = UDim2.new(0, 100, 0, 30)
+MiniButton.Position = UDim2.new(0, 10, 0, 10)
+MiniButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MiniButton.Text = "MertSS"
+MiniButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MiniButton.Font = Enum.Font.GothamBold
+MiniButton.TextScaled = true
+MiniButton.Visible = false
+MiniButton.Parent = ScreenGui
+
+local MiniCorner = Instance.new("UICorner")
+MiniCorner.CornerRadius = UDim.new(0, 8)
+MiniCorner.Parent = MiniButton
+
+-- Fly fonksiyonu
+local function startFly()
+    flying = true
+    FlyBtn.Text = "Fly: ON"
+    FlyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "MertSS_FlyVelocity"
+    bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = RootPart
+
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.Name = "MertSS_FlyGyro"
+    bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+    bodyGyro.P = 1000
+    bodyGyro.D = 50
+    bodyGyro.Parent = RootPart
+
+    connection = RunService.RenderStepped:Connect(function()
+        if not flying then return end
+        if not RootPart or not RootPart.Parent then return end
+
+        local camera = workspace.CurrentCamera
+        local moveDir = Vector3.new(0, 0, 0)
+
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDir = moveDir + camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDir = moveDir - camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDir = moveDir - camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDir = moveDir + camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDir = moveDir + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+            moveDir = moveDir - Vector3.new(0, 1, 0)
+        end
+
+        if moveDir.Magnitude > 0 then
+            moveDir = moveDir.Unit * flySpeed
+        end
+
+        bodyVelocity.Velocity = moveDir
+        bodyGyro.CFrame = camera.CFrame
+    end)
+end
+
+local function stopFly()
+    flying = false
+    FlyBtn.Text = "Fly: OFF"
+    FlyBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+    if connection then
+        connection:Disconnect()
+        connection = nil
+    end
+
+    local bv = RootPart:FindFirstChild("MertSS_FlyVelocity")
+    if bv then bv:Destroy() end
+    local bg = RootPart:FindFirstChild("MertSS_FlyGyro")
+    if bg then bg:Destroy() end
+end
+
+-- Noclip fonksiyonu
+local noclipConnection
+local function startNoclip()
+    noclip = true
+    NoclipBtn.Text = "Noclip: ON"
+    NoclipBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+
+    noclipConnection = RunService.Stepped:Connect(function()
+        if not noclip then return end
+        if Character then
+            for _, part in pairs(Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+end
+
+local function stopNoclip()
+    noclip = false
+    NoclipBtn.Text = "Noclip: OFF"
+    NoclipBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+
+    if Character then
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+FlyBtn.MouseButton1Click:Connect(function()
+    if flying then stopFly() else startFly() end
+end)
+
+NoclipBtn.MouseButton1Click:Connect(function()
+    if noclip then stopNoclip() else startNoclip() end
+end)
+
+-- Minimize / Maximize
+MinimizeBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    MiniButton.Visible = true
+end)
+
+MiniButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    MiniButton.Visible = false
+end)
+
+-- X tuşu ile menü aç/kapa
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.X then
+        if MainFrame.Visible then
+            MainFrame.Visible = false
+            MiniButton.Visible = true
+        else
+            MainFrame.Visible = true
+            MiniButton.Visible = false
+        end
+    end
+end)
+
+-- Karakter yeniden doğduğunda referansları güncelle
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = newChar:WaitForChild("Humanoid")
+    RootPart = newChar:WaitForChild("HumanoidRootPart")
+
+    if flying then
+        stopFly()
+        startFly()
+    end
+    if noclip then
+        stopNoclip()
+        startNoclip()
+    end
+end)
